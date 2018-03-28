@@ -10,8 +10,58 @@ class SearchTimeout(Exception):
     """Subclass base exception for code clarity. """
     pass
 
-
 def custom_score(game, player):
+    """Calculate the heuristic value of a game state from the point of view
+    of the given player.
+
+    Note: this function should be called from within a Player instance as
+    `self.score()` -- you should not need to call this function directly.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
+
+    Returns
+    -------
+    float
+        The heuristic value of the current game state to the specified player.
+    """
+    # TODO: finish this function!
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = game.get_legal_moves(player)
+    opp_moves = game.get_legal_moves(game.get_opponent(player))
+
+    w, h = game.width / 2., game.height / 2.
+
+    # use distance from location to center
+    # x0, y0 = game.get_player_location(player)
+    # x1, y1 = game.get_player_location(game.get_opponent(player))
+    # own_score = float((10/((h - x0)**2 + (w - y0)**2)))
+    # opp_score = float((10/((h - x1)**2 + (w - y1)**2)))
+
+    # use distance of all moves to center
+    own_score = sum([float((10/((h - x)**2 + (w - y)**2))) for x,y in own_moves])
+    opp_score = sum([float((10/((h - x)**2 + (w - y)**2))) for x,y in opp_moves])
+
+    return float(own_score - opp_score)
+
+    # own_score = float((((h - x0)**2 + (w - y0)**2)))
+    # opp_score = float((((h - x1)**2 + (w - y1)**2)))
+
+    # return (opp_score - own_score)
+
+def custom_score_2(game, player):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -36,43 +86,36 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
-    # if game.is_loser(player):
-    #     return float("-inf")
+    if game.is_loser(player):
+        return float("-inf")
 
-    # if game.is_winner(player):
-    #     return float("inf")
+    if game.is_winner(player):
+        return float("inf")
 
-    # own_moves = len(game.get_legal_moves(player))
-    # opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    # return float(own_moves - opp_moves)
+    own_moves = game.get_legal_moves(player)
+    opp_moves = game.get_legal_moves(game.get_opponent(player))
 
+    ## if the move is not at the edge,is good move
+    own_good_moves,own_bad_moves = [],[]
+    for x,y in own_moves:
+        if x % game.height and y % game.width:
+            own_good_moves.append((x,y))
+        else:
+            own_bad_moves.append((x,y))
+    
+    opp_good_moves,opp_bad_moves = [],[] 
+    for x,y in opp_moves:
+        if x % game.height and y % game.width:
+            opp_good_moves.append((x,y))
+        else:
+            opp_bad_moves.append((x,y))
 
-def custom_score_2(game, player):
-    """Calculate the heuristic value of a game state from the point of view
-    of the given player.
+    # own_good_moves = [(x,y) for x,y in own_moves if x%6 and y%6 ]
+    # own_bad_moves = [(x,y) for x,y in own_moves if not (x%6 and y%6) ]
+    # opp_good_moves = [(x,y) for x,y in opp_moves if x%6 and y%6 ]
+    # opp_bad_moves = [(x,y) for x,y in opp_moves if not (x%6 and y%6) ]
 
-    Note: this function should be called from within a Player instance as
-    `self.score()` -- you should not need to call this function directly.
-
-    Parameters
-    ----------
-    game : `isolation.Board`
-        An instance of `isolation.Board` encoding the current state of the
-        game (e.g., player locations and blocked cells).
-
-    player : object
-        A player instance in the current game (i.e., an object corresponding to
-        one of the player objects `game.__player_1__` or `game.__player_2__`.)
-
-    Returns
-    -------
-    float
-        The heuristic value of the current game state to the specified player.
-    """
-    # TODO: finish this function!
-    raise NotImplementedError
-
+    return float(1.1*len(own_good_moves) + len(own_bad_moves) - 1.1*len(opp_good_moves) - len(opp_bad_moves))
 
 def custom_score_3(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -97,8 +140,28 @@ def custom_score_3(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
 
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = game.get_legal_moves(player)
+    own_loc = game.get_player_location(player)
+
+    opp_moves = game.get_legal_moves(game.get_opponent(player))
+    opp_loc = game.get_player_location(game.get_opponent(player))
+
+    directions = {(-1,-2):'left_top',(-2,-1):'left_top',(-2,1):'right_top',(-1,2):'right_top',\
+                  (1,-2):'left_down',(2,-1):'left_down',(2,1):'right_down',(1,2):'right_down'}
+
+    own_move_directions = len(set([directions[(x - own_loc[0],y - own_loc[1])] for x,y in own_moves]))
+    opp_move_direcitons = len(set([directions[(x - opp_loc[0],y - opp_loc[1])] for x,y in opp_moves]))
+
+    own_coef = own_move_directions/(own_move_directions+opp_move_direcitons)
+    opp_coef = opp_move_direcitons/(own_move_directions+opp_move_direcitons)
+
+    return float(own_coef*len(own_moves) - opp_coef*len(opp_moves))
 
 class IsolationPlayer:
     """Base class for minimax and alphabeta agents -- this class is never
@@ -347,10 +410,16 @@ class AlphaBetaPlayer(IsolationPlayer):
             # raised when the timer is about to expire.
             depth = 1
             while depth > 0:
-                best_move = self.alphabeta(game,depth)
+                
+                move = self.alphabeta(game,depth)
+                if move is None:
+                    continue
+
+                best_move = move
                 best_score = self.score(game.forecast_move(best_move),game.active_player)
                 if best_score == float('inf'):
                     break
+
                 depth += 1
 
             # return self.alphabeta(game, self.search_depth)
@@ -423,9 +492,6 @@ class AlphaBetaPlayer(IsolationPlayer):
             if v > best_v:
                 best_v = v
                 move = m
-                
-        if move == None:
-            move = (-1,-1)
 
         return move
 

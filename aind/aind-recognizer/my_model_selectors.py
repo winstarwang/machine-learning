@@ -38,8 +38,8 @@ class ModelSelector(object):
         try:
             hmm_model = GaussianHMM(n_components=num_states, covariance_type="diag", n_iter=1000,
                                     random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
-            if self.verbose:
-                print("model created for {} with {} states".format(self.this_word, num_states))
+            # if self.verbose:
+            #     print("model created for {} with {} states".format(self.this_word, num_states))
             return hmm_model
         except:
             if self.verbose:
@@ -77,7 +77,26 @@ class SelectorBIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        logLs = dict()
+        for num_states in range(self.min_n_components,self.max_n_components+1):
+            model = self.base_model(num_states)
+            try:
+                score = (-2)*model.score(self.X,self.lengths) + 4*math.log(len(self.X))
+                if self.verbose:
+                    print("word:{},num_state:{},score:{}".format(self.this_word,num_states,score))
+            except:
+                if self.verbose:
+                    print("failure on {} with {} states".format(self.this_word, num_states))
+                continue
+
+            logLs[num_states] = score
+
+        if len(logLs):
+            best_num_states = min(logLs, key=logLs.get)
+        else:
+            best_num_states = self.n_constant
+
+        return self.base_model(best_num_states)
 
 
 class SelectorDIC(ModelSelector):
@@ -94,7 +113,44 @@ class SelectorDIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        logLs = dict()
+        models = dict()
+
+        for num_states in range(self.min_n_components,self.max_n_components+1):
+            model = self.base_model(num_states)
+            models[num_states] = model
+
+        for num_states in range(self.min_n_components,self.max_n_components+1):
+            try:
+                score1 = models[num_states].score(self.X,self.lengths)
+            except:
+                continue
+
+            score_anti = []
+            for k,v in models.items():
+                if k != num_states:
+                    try:
+                        score_i = v.score(self.X,self.lengths)
+                    except:
+                        continue
+                    else:
+                        score_anti.append(score_i)
+                        
+            if len(score_anti):
+                score2 = sum(score_anti)/len(score_anti)
+            else:
+                score2 = 0
+
+            logLs[num_states] = score1 - score2
+            if self.verbose:
+                print("num_state:{},score:{}=({})-({})".format(num_states,score1-score2,score1,score2))
+
+        if len(logLs):
+            best_num_states = max(logLs, key=logLs.get)
+        else:
+            best_num_states = self.n_constant
+
+        return self.base_model(best_num_states)
 
 
 class SelectorCV(ModelSelector):
@@ -106,4 +162,33 @@ class SelectorCV(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection using CV
-        raise NotImplementedError
+        logLs = dict()
+        split_method = KFold(5)
+        for num_states in range(self.min_n_components,self.max_n_components+1):
+
+            if len(self.sequences) < 5:
+                model = self.base_model(num_states)
+                try:
+                    logLs[num_states] = model.score(self.X,self.lengths)
+                except:
+                    pass
+                
+                continue
+
+            val_scores = 0
+            for cv_train_idx, cv_test_idx in split_method.split(self.sequences):    
+                try:
+                    model = GaussianHMM(n_components=num_states, covariance_type="diag", n_iter=1000,
+                                        random_state=self.random_state, verbose=False).fit(combine_sequences(cv_train_idx,self.sequences))
+                    val_scores += model.score(combine_sequences(cv_test_idx,self.sequences))
+                except:
+                    if self.verbose:
+                        print("failure on {} with {} states".format(self.this_word, num_states))
+                    continue
+            
+            logLs[num_states] = val_scores/split_method.get_n_splits()
+        
+        best_num_states = max(logLs, key=logLs.get)
+
+        return self.base_model(best_num_states)
+

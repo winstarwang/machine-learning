@@ -20,14 +20,15 @@ class TestPlanningGraphLevels(unittest.TestCase):
     def test_add_action_level(self):
         # for level, nodeset in enumerate(self.pg.a_levels):
         #     for node in nodeset:
-        #         print("Level {}: {}{})".format(level, node.action.name, node.action.args))
+        #         print("action Level {}: {}{})".format(level, node.action.name, node.action.args))
         self.assertEqual(len(self.pg.a_levels[0]), 3, len(self.pg.a_levels[0]))
         self.assertEqual(len(self.pg.a_levels[1]), 6, len(self.pg.a_levels[1]))
 
     def test_add_literal_level(self):
         # for level, nodeset in enumerate(self.pg.s_levels):
         #     for node in nodeset:
-        #         print("Level {}: {})".format(level, node.literal))
+        #         sign = '' if node.is_pos else '~'
+        #         print("Level {}: {}{})".format(level, sign, node.symbol))
         self.assertEqual(len(self.pg.s_levels[0]), 2, len(self.pg.s_levels[0]))
         self.assertEqual(len(self.pg.s_levels[1]), 4, len(self.pg.s_levels[1]))
         self.assertEqual(len(self.pg.s_levels[2]), 4, len(self.pg.s_levels[2]))
@@ -94,6 +95,12 @@ class TestPlanningGraphMutex(unittest.TestCase):
                          "Same literal nodes found to be Negation mutex")
 
     def test_inconsistent_support_mutex(self):
+        
+        # for node in self.ns1.parents:
+        #     print("ns1:{}{})".format(node.action.name, node.action.args))
+        # for node in self.ns2.parents:
+        #     print("ns2:{}{})".format(node.action.name, node.action.args))
+
         self.assertFalse(PlanningGraph.inconsistent_support_mutex(self.pg, self.ns1, self.ns2),
                          "Independent node paths should NOT be inconsistent-support mutex")
         mutexify(self.na1, self.na2)
